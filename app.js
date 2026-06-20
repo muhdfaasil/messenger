@@ -108,6 +108,22 @@ We look forward to welcoming you! 🙏`,
 
 const MESSAGE_SEPARATOR = '\n\n';
 
+// Doctors available for appointment cancellations (matches the Specialist Team template)
+const DOCTORS = ['Dr. Thalhath', 'Dr. Ashitha', 'Dr. Adila'];
+
+function cancellationMessage(doctor) {
+  return `🙏 *Appointment Cancellation*
+
+Dear Patient,
+
+We're sorry to inform you that your appointment with *${doctor}* at *Metro Mind Hospital* has been cancelled due to unavoidable circumstances.
+
+We sincerely apologise for the inconvenience. To reschedule at a time that suits you, please call us at *7306808867*.
+
+Thank you for your understanding. 💚
+🌐 https://metromindhospitals.com/`;
+}
+
 function buildWAUrl(phone, messageText) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(messageText)}`;
 }

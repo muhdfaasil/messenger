@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WhatsApp Messenger – Metro Mind Hospital</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
 </head>
@@ -24,10 +27,17 @@
 
 <main class="main">
 
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-panel="general" role="tab">General</button>
+    <button class="tab" data-panel="cancellation" role="tab">Cancellation</button>
+  </div>
+
+  <section id="panel-general" class="panel">
+
   <!-- Step 1: Phone number -->
   <div class="card">
     <div class="card-header">
-      <span class="step-badge">1</span>
+      <span class="step-badge">01</span>
       <h2>Enter WhatsApp Number</h2>
     </div>
     <div class="card-body">
@@ -73,7 +83,7 @@
   <!-- Step 2: Select templates -->
   <div class="card">
     <div class="card-header">
-      <span class="step-badge">2</span>
+      <span class="step-badge">02</span>
       <h2>Select Message Templates</h2>
     </div>
     <div class="card-body">
@@ -89,7 +99,7 @@
   <!-- Step 3: Preview & edit -->
   <div class="card">
     <div class="card-header">
-      <span class="step-badge">3</span>
+      <span class="step-badge">03</span>
       <h2>Preview &amp; Edit</h2>
     </div>
     <div class="card-body" id="preview-container">
@@ -114,6 +124,62 @@
       Send via WhatsApp
     </button>
   </div>
+
+  </section>
+
+  <!-- ════════ Cancellation panel ════════ -->
+  <section id="panel-cancellation" class="panel" hidden>
+
+    <!-- 01: Doctor & message -->
+    <div class="card">
+      <div class="card-header">
+        <span class="step-badge">01</span>
+        <h2>Doctor &amp; Message</h2>
+      </div>
+      <div class="card-body">
+        <label class="field-label" for="cancel-doctor">Doctor whose appointments are cancelled</label>
+        <div class="country-select-wrapper select-block">
+          <select id="cancel-doctor"></select>
+        </div>
+        <div class="chat-canvas">
+          <textarea id="cancel-message" class="msg-bubble"></textarea>
+          <div class="bubble-meta">
+            <span id="cancel-char-count"></span>
+          </div>
+        </div>
+        <p class="field-hint">Changing the doctor rewrites the message. You can edit the text before sending.</p>
+      </div>
+    </div>
+
+    <!-- 02: Recipients -->
+    <div class="card">
+      <div class="card-header">
+        <span class="step-badge">02</span>
+        <h2>Recipients</h2>
+      </div>
+      <div class="card-body">
+        <div class="cancel-numbers-head">
+          <div class="country-select-wrapper">
+            <select id="cancel-country" title="Country code"></select>
+          </div>
+          <span class="field-label-inline">Paste the patients' numbers</span>
+        </div>
+        <textarea id="cancel-numbers" class="numbers-input" placeholder="98765 43210&#10;99887 76655&#10;…one number per line"></textarea>
+        <p class="field-hint">One number per line (commas also work). Local numbers — country code is set above.</p>
+        <button type="button" id="cancel-build-btn" class="btn btn-secondary full">Build send list</button>
+
+        <div id="recipient-section" hidden>
+          <div class="recipients-header">
+            <span class="eyebrow">Send list</span>
+            <span class="send-progress" id="send-progress">0 of 0 sent</span>
+          </div>
+          <div class="recipient-list" id="recipient-list"></div>
+          <p class="field-hint">WhatsApp opens one chat at a time — tap send there, come back, then send the next.</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
 
 </main>
 
@@ -262,8 +328,103 @@
     window.open(buildWAUrl(phone, message), '_blank');
   });
 
+  // ── Tabs ──
+  const tabs = document.querySelectorAll('.tab');
+  const panels = {
+    general: document.getElementById('panel-general'),
+    cancellation: document.getElementById('panel-cancellation'),
+  };
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.toggle('active', t === tab));
+    Object.entries(panels).forEach(([key, el]) => { el.hidden = key !== tab.dataset.panel; });
+  }));
+
+  // ── Cancellation ──
+  const cancelDoctor    = document.getElementById('cancel-doctor');
+  const cancelMessage   = document.getElementById('cancel-message');
+  const cancelCharCount = document.getElementById('cancel-char-count');
+  const cancelCountry   = document.getElementById('cancel-country');
+  const cancelNumbers   = document.getElementById('cancel-numbers');
+  const cancelBuildBtn  = document.getElementById('cancel-build-btn');
+  const recipientSection= document.getElementById('recipient-section');
+  const recipientList   = document.getElementById('recipient-list');
+  const sendProgress    = document.getElementById('send-progress');
+
+  let cancelRecipients = [];
+  let sentSet = new Set();
+
+  // Populate doctor dropdown + reuse the general country-code options
+  DOCTORS.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d; o.textContent = d;
+    cancelDoctor.appendChild(o);
+  });
+  cancelCountry.innerHTML = countryCode.innerHTML;
+
+  function refreshCancelMessage() {
+    cancelMessage.value = cancellationMessage(cancelDoctor.value);
+    updateCancelCount();
+  }
+  function updateCancelCount() {
+    const len = cancelMessage.value.length;
+    cancelCharCount.textContent = `${len} character${len !== 1 ? 's' : ''}`;
+  }
+  cancelDoctor.addEventListener('change', refreshCancelMessage);
+  cancelMessage.addEventListener('input', updateCancelCount);
+
+  function parseNumbers(raw, dc) {
+    const out = [];
+    raw.split(/[\n,;]+/).forEach(tok => {
+      let d = tok.replace(/\D/g, '');
+      if (!d) return;
+      if (d.startsWith(dc) && d.length > dc.length + 6) d = d.slice(dc.length);
+      if (d.length >= 7 && d.length <= 12) out.push(dc + d);
+    });
+    return [...new Set(out)];
+  }
+
+  function updateProgress() {
+    sendProgress.textContent = `${sentSet.size} of ${cancelRecipients.length} sent`;
+  }
+
+  function renderRecipients() {
+    recipientList.innerHTML = '';
+    cancelRecipients.forEach((phone, i) => {
+      const sent = sentSet.has(i);
+      const row = document.createElement('div');
+      row.className = 'recipient-row' + (sent ? ' sent' : '');
+      row.innerHTML = `
+        <span class="recipient-num">+${phone}</span>
+        <span class="recipient-status">${sent ? 'Sent ✓' : 'Pending'}</span>
+        <button type="button" class="btn btn-sm send-one">${sent ? 'Resend' : 'Send'}</button>`;
+      row.querySelector('.send-one').addEventListener('click', () => {
+        const msg = cancelMessage.value.trim();
+        if (!msg) { showToast('Message is empty'); return; }
+        window.open(buildWAUrl(phone, msg), '_blank');
+        sentSet.add(i);
+        renderRecipients();
+        updateProgress();
+      });
+      recipientList.appendChild(row);
+    });
+  }
+
+  cancelBuildBtn.addEventListener('click', () => {
+    cancelRecipients = parseNumbers(cancelNumbers.value, cancelCountry.value);
+    if (!cancelRecipients.length) {
+      showToast('Add at least one valid number');
+      recipientSection.hidden = true;
+      return;
+    }
+    sentSet = new Set();
+    renderRecipients();
+    updateProgress();
+    recipientSection.hidden = false;
+  });
+
   // ── Init ──
   renderTemplates();
+  refreshCancelMessage();
 </script>
 </body>
 </html>
