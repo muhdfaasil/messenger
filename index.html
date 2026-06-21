@@ -137,7 +137,7 @@
         <h2>Doctor &amp; Message</h2>
       </div>
       <div class="card-body">
-        <label class="field-label" for="cancel-doctor">Doctor whose appointments are cancelled</label>
+        <label class="field-label" for="cancel-doctor">Doctor / Psychologist whose appointments are cancelled</label>
         <div class="country-select-wrapper select-block">
           <select id="cancel-doctor"></select>
         </div>
@@ -353,10 +353,10 @@
   let cancelRecipients = [];
   let sentSet = new Set();
 
-  // Populate doctor dropdown + reuse the general country-code options
-  DOCTORS.forEach(d => {
+  // Populate provider dropdown + reuse the general country-code options
+  PROVIDERS.forEach(p => {
     const o = document.createElement('option');
-    o.value = d; o.textContent = d;
+    o.value = p.name; o.textContent = p.name;
     cancelDoctor.appendChild(o);
   });
   cancelCountry.innerHTML = countryCode.innerHTML;

@@ -108,20 +108,46 @@ We look forward to welcoming you! 🙏`,
 
 const MESSAGE_SEPARATOR = '\n\n';
 
-// Doctors available for appointment cancellations (matches the Specialist Team template)
-const DOCTORS = ['Dr. Thalhath', 'Dr. Ashitha', 'Dr. Adila'];
+// Providers available for appointment cancellations.
+// Doctors get the appointment/medication message; psychologists get the session message.
+const PROVIDERS = [
+  { name: 'Dr. Thalhath',  type: 'doctor' },
+  { name: 'Dr. Ashitha',   type: 'doctor' },
+  { name: 'Dr. Adila',     type: 'doctor' },
+  { name: "Arshina Ma'am", type: 'psychologist' },
+  { name: "Pameela Ma'am", type: 'psychologist' },
+  { name: "Swathi Ma'am",  type: 'psychologist' }
+];
 
-function cancellationMessage(doctor) {
-  return `🙏 *Appointment Cancellation*
+function cancellationMessage(providerName) {
+  const provider = PROVIDERS.find(p => p.name === providerName);
+  const type = provider ? provider.type : 'doctor';
 
-Dear Patient,
+  if (type === 'psychologist') {
+    return `Hello, this is Metromind Hospital.
 
-We're sorry to inform you that your appointment with *${doctor}* at *Metro Mind Hospital* has been cancelled due to unavoidable circumstances.
+We would like to inform you that your scheduled session with *${providerName}* has been cancelled as she is on leave.
 
-We sincerely apologise for the inconvenience. To reschedule at a time that suits you, please call us at *7306808867*.
+Kindly let us know a convenient date and time so that we can reschedule your follow-up session.
 
-Thank you for your understanding. 💚
-🌐 https://metromindhospitals.com/`;
+We apologize for the inconvenience and appreciate your understanding.
+
+Thank you.
+Metromind Hospital`;
+  }
+
+  return `Hello, this is Metromind Hospital.
+
+We would like to inform you that *${providerName}* will be on emergency leave, and therefore your scheduled appointment has been cancelled.
+
+Kindly let us know a convenient date and time so that we can reschedule your appointment.
+
+Also, please let us know whether you have sufficient medication and until which date your current medicines will last. If required, we can arrange a prescription refill, send the medicines via courier, or you may collect them directly from the hospital to ensure continuity of treatment until your next appointment.
+
+We apologize for the inconvenience and appreciate your understanding.
+
+Thank you.
+Metromind Hospital`;
 }
 
 function buildWAUrl(phone, messageText) {
